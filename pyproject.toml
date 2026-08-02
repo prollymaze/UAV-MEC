@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "uav-semcom-ppo"
+version = "0.1.0"
+description = "PPO-based joint UAV trajectory, scheduling, offloading, and semantic symbol configuration for semantic-communication-enabled UAV-assisted MEC."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "torch>=2.0",
+    "numpy>=1.24",
+    "PyYAML>=6.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "matplotlib>=3.7",
+    "seaborn>=0.12",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]

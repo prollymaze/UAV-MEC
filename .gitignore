@@ -1,0 +1,41 @@
+# ===== Python =====
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+*.egg
+src/*.egg-info/
+
+# Virtual environments
+venv/
+env/
+.venv/
+.env/
+
+# ===== IDE / Editor =====
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ===== OS =====
+.DS_Store
+Thumbs.db
+
+# ===== Pytest =====
+.pytest_cache/
+htmlcov/
+.coverage
+.coverage.*
+
+# ===== Training outputs (optional — see note below) =====
+# Uncomment the lines below if you do NOT want to track
+# generated outputs (plots, training histories).
+# outputs/*.png
+# outputs/*.json

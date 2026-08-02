@@ -1,0 +1,73 @@
+# Reference copy of Config defaults (src/uav_semcom_ppo/config.py).
+# Values match Table 2 and Table 3 of the paper where a table value exists;
+# see README.md for a full list of what was matched vs. what was kept as a
+# reasonable default (jammer power, bandwidth, task size -- these are swept
+# in the paper's Figs 6-8 rather than fixed).
+# Not auto-loaded by scripts/train.py out of the box -- it's here so you can
+# version different experiment configs and load one explicitly if you wire up
+# a loader (e.g. `cfg = Config(**yaml.safe_load(open(path))["config"])`).
+# Keep this in sync with config.py manually, or generate it from Config via
+# dataclasses.asdict() if it starts drifting.
+
+config:
+  # system geometry (Table 2)
+  L: 400.0
+  W: 400.0
+  H: 300.0
+  v_max: 15.0
+  delta: 1.0
+  N: 40
+  M: 15
+
+  # semantic symbol set (Table 2: K = 1,...,20)
+  symbol_set: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
+  epsilon_th: 0.9
+
+  # task / comms (Table 2)
+  bandwidth_hz: 1.0e6
+  noise_power_w: 1.0e-14
+  p_max_w: 0.2
+  carrier_freq_hz: 2.0e9
+  task_bits_mean: 5.0e5
+  cpu_cycles_per_bit: 1000.0
+
+  f_loc_hz: 1.05e9
+  f_uav_max_hz: 2.3e9
+  kappa_device: 1.0e-27
+  kappa_uav: 1.0e-27
+
+  # jammer (Eq. 6-8; not a fixed Table 2 value, it's swept in Fig. 6)
+  jammer_power_dbm: 20.0
+  jammer_pos_frac: [0.5, 0.5]
+  penetration_loss_dbw: -100.0
+  obstruction_prob: 0.2
+
+  # UAV propulsion (Eq. 12: E_fly = 0.5 * M_UAV * v^2 * delta)
+  uav_mass_kg: 8.5
+
+  # energy budget (Table 2)
+  E_b: 8.0e4
+
+  # cost weights (Table 3)
+  alpha: 2.0
+  beta: 0.002
+
+  # reward penalty coefficients (not in the paper's tables)
+  eta_semantic: 5.0
+  psi_boundary: 0.0
+
+  # PPO hyperparameters (Table 3)
+  gamma: 0.9
+  gae_lambda: 0.95
+  clip_ratio: 0.2
+  lr_actor: 1.0e-3
+  lr_critic: 1.0e-3
+  lr_mu: 1.0e-3
+  train_epochs_per_update: 4
+  minibatch_size: 256
+  entropy_coef: 0.01
+  vf_coef: 0.5
+  max_grad_norm: 0.5
+  episodes: 2000
+  hidden_layer_sizes: [128, 64]
+  seed: 42

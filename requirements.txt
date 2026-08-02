@@ -1,0 +1,10 @@
+torch>=2.0
+numpy>=1.24
+PyYAML>=6.0
+
+# optional, only needed for scripts/plot_results.py or notebooks
+matplotlib>=3.7
+seaborn>=0.12
+
+# optional, only needed for tests/
+pytest>=7.0
