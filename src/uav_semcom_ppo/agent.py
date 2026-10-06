@@ -183,7 +183,10 @@ class PPOAgent:
     def evaluate(self, episodes: int = 5):
         """Run deterministic (greedy) rollouts under the current policy and
         report average per-step task-completion delay and energy consumption
-        -- the metrics plotted in Figs. 4-8 of the paper."""
+        -- the metrics plotted in Figs. 4-8 of the paper.
+        Delay is info["T"] = max(T_loc, T_tx + T_uav), which is the task
+        processing+transmission delay from the paper's Eqs. 11/13/14 and
+        exactly what the reward's rho_cost term penalises."""
         cfg = self.cfg
         delays, energies, fairness_vals = [], [], []
         for _ in range(episodes):
@@ -194,15 +197,19 @@ class PPOAgent:
                 next_state, rho_cost, shortfall, overrun, done, info = self.env.step(
                     mapped["m_star"], mapped["R"], mapped["num_symbols"], mapped["v"], mapped["b"]
                 )
-                # FIX: the paper's Figs. 4-8 plot task completion time as defined
-                # by Eqs. (11)/(13)/(14) -- the processing+transmission delay of
-                # the task actually being handled in this slot -- not queueing
-                # backlog across idle devices. info["completion_time"] is exactly
-                # that (wait_before_service + T for the served device m_star).
-                # We still track fairness_penalty separately (below) so a
-                # scheduling-fairness diagnostic remains available without
-                # contaminating the primary reported metric.
-                delays.append(info["completion_time"])
+                # Use info["T"] for task completion time: that is exactly
+                # max(T_loc, T_tx + T_uav) from the paper's Eqs. 11/13/14 --
+                # the processing+transmission delay for the task handled in
+                # this slot. This is what the reward's rho_cost penalises and
+                # what the paper's Figs. 4b/5b/6b/7/8 plot on their y-axes.
+                # FIX: previously used info["completion_time"] = wait_before_
+                # service + T, which adds per-device queueing backlog (time
+                # since last served) and is NOT part of the paper's Eq. 11-14
+                # definition of task completion time. The wait term grows
+                # linearly with N/M (slots-per-device), dominating T and
+                # making delay artificially increase with M for reasons
+                # unrelated to the physics being swept.
+                delays.append(info["T"])
                 fairness_vals.append(info["fairness_penalty"])
                 energies.append(info["E"])
                 state = next_state

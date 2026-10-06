@@ -137,13 +137,26 @@ class UAVSemanticEnv:
         # using b=1 (no bandwidth scaling of the interference term).
         snr = self.sinr(m_star, b)
 
+        # Raw task bits (Eq. 1/2/3 in the paper).
+        raw_bits = float(self.task_bits[m_star])
         eps = self.semantic_similarity(num_symbols, snr)
-        D_sem = self.semantic_compressed_bits(self.task_bits[m_star], num_symbols)
 
-        # --- delay ---
-        local_bits = (1 - R) * D_sem
-        off_bits = R * D_sem
-        T_loc = local_bits * cfg.cpu_cycles_per_bit / cfg.f_loc_hz
+        # Semantic compression reduces ONLY the bits sent over the air.  The
+        # device CPU (local fraction) and MEC CPU (offloaded fraction) both
+        # operate on the original task information, so they use raw_bits for
+        # their compute time / energy calculations.
+        # FIX: previously D_sem was used for all three quantities (local
+        # compute, transmission, MEC compute), cutting compute time and energy
+        # by 15-50% and making the per-slot cost 10-50× smaller than the
+        # paper's scale, which in turn caused the reward to plateau far above
+        # the paper's Fig. 3 convergence values.
+        D_sem = self.semantic_compressed_bits(raw_bits, num_symbols)
+
+        # --- delay (Eqs. 11, 13, 14) ---
+        local_compute_bits = (1 - R) * raw_bits   # device processes (1-R) of raw task
+        off_tx_bits       = R * D_sem              # compressed bits transmitted over the air
+        off_compute_bits  = R * raw_bits           # MEC processes R fraction of raw task
+        T_loc = local_compute_bits * cfg.cpu_cycles_per_bit / cfg.f_loc_hz
         # FIX (Bug 3): b is the currently-scheduled device's bandwidth
         # allocation coefficient b_m[n] (Eq. 9), produced by ActionMapper via
         # Algorithm 1 steps 8-10 -- a real, policy-controlled, per-device
@@ -152,15 +165,15 @@ class UAVSemanticEnv:
         # of every device always getting an identical, fixed share.
         effective_bandwidth = b * cfg.bandwidth_hz
         rate = effective_bandwidth * math.log2(1 + snr)
-        T_tx = off_bits / max(rate, 1e-6)
+        T_tx = off_tx_bits / max(rate, 1e-6)
         f_uav = cfg.f_uav_max_hz
-        T_uav = off_bits * cfg.cpu_cycles_per_bit / max(f_uav, 1e-6)
+        T_uav = off_compute_bits * cfg.cpu_cycles_per_bit / max(f_uav, 1e-6)
         T = max(T_loc, T_tx + T_uav)
 
         # --- energy ---
-        E_device = cfg.kappa_device * (cfg.f_loc_hz ** 2) * local_bits * cfg.cpu_cycles_per_bit
-        E_trans = cfg.p_max_w * T_tx
-        E_uav_comp = cfg.kappa_uav * (f_uav ** 2) * off_bits * cfg.cpu_cycles_per_bit
+        E_device  = cfg.kappa_device * (cfg.f_loc_hz ** 2) * local_compute_bits * cfg.cpu_cycles_per_bit
+        E_trans   = cfg.p_max_w * T_tx
+        E_uav_comp = cfg.kappa_uav * (f_uav ** 2) * off_compute_bits * cfg.cpu_cycles_per_bit
         E_fly = self.flight_energy(v)
         E_total_slot = E_fly + E_uav_comp + E_device + E_trans
 

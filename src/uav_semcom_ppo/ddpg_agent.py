@@ -278,15 +278,10 @@ class DDPGAgent:
     def evaluate(self, episodes: int = 5):
         """Run deterministic (no-noise) rollouts under the current policy
         and report average delay/energy -- same metrics and same method
-        signature as PPOAgent.evaluate(), for apples-to-apples comparison."""
+        signature as PPOAgent.evaluate(), for apples-to-apples comparison.
+        Delay is info["T"] = max(T_loc, T_tx + T_uav), matching the paper's
+        Eqs. 11/13/14 and what rho_cost penalises in the reward."""
         cfg = self.cfg
-        # FIX: use info["completion_time"] (per-task processing+transmission
-        # delay, Eqs. 11/13/14) as the reported delay metric, matching what the
-        # paper's Figs. 4-8 actually plot -- not fairness_penalty (queueing
-        # backlog across all devices), which is dominated by N/M scheduling
-        # cadence rather than the swept physical parameter. See PPOAgent.evaluate()
-        # for the same fix and rationale; fairness_penalty is kept as a
-        # secondary diagnostic only.
         delays, energies, fairness_vals = [], [], []
         for _ in range(episodes):
             state = self.env.reset()
@@ -296,7 +291,13 @@ class DDPGAgent:
                 next_state, rho_cost, shortfall, overrun, done, info = self.env.step(
                     mapped["m_star"], mapped["R"], mapped["num_symbols"], mapped["v"], mapped["b"]
                 )
-                delays.append(info["completion_time"])
+                # Use info["T"] = max(T_loc, T_tx + T_uav): the task processing
+                # delay from the paper's Eqs. 11/13/14, consistent with what
+                # the reward's rho_cost penalises and what Figs. 4b-8 plot.
+                # FIX: previously used info["completion_time"] (= wait_since_
+                # last_served + T), which adds queueing backlog not in the
+                # paper's definition and inflates delay monotonically with M.
+                delays.append(info["T"])
                 fairness_vals.append(info["fairness_penalty"])
                 energies.append(info["E"])
                 state = next_state

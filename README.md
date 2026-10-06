@@ -254,23 +254,26 @@ logic should be needed beyond that.
   each episode. `ActionMapper` and `UAVSemanticEnv.step()` both use this
   full SINR (not a plain SNR) for semantic-similarity and rate calculations.
 
-### Most recent fix: Energy cost calculation (matches paper Eq. 23)
+### Most recent fix: Compute uses raw task bits (matches paper physics)
 
-The reward function now correctly excludes **flight energy** E_fly from the per-step cost.
-Flight energy still counts toward the mission-level energy budget E_b for constraint 
-enforcement, but it's not penalized in the reward signal, allowing the policy to move freely.
+Semantic compression (DeepSC encoding) reduces the bits **transmitted over the
+air**, but the device CPU and MEC CPU both operate on the **original task
+information**. Previously `D_sem` (15–50% of raw bits) was used for all three
+quantities — local compute, air-link transmission, and MEC compute — which cut
+compute time/energy by 15–50% and made the per-slot cost 10–50× smaller than
+the paper's scale.
 
-Before this fix: energy was artificially inflated (100-400× too high) because E_fly 
-(0.5×mass×v²) was included in β·E_total, making the policy heavily penalize movement.
+After this fix:
+- `T_loc = (1-R) × raw_bits × c / f_device`  (local compute uses raw bits)
+- `T_tx  = R × D_sem / rate`                  (transmission uses compressed bits ✓)
+- `T_uav = R × raw_bits × c / f_UAV`          (MEC compute uses raw bits)
+- Same split for energy: `E_device`, `E_uav_comp` use raw bits; `E_trans` uses D_sem
 
-After this fix: reported energy now matches the paper's scale (~0.3-1 J per slot vs. 
-paper's ~5-28 J, still off by ~10-50× but in the right ballpark).
-
-**Trade-off / known limitation:** With the simplified per-device bandwidth allocation 
-(`bandwidth / M`), energy now trends *downward* with device count in practice, opposite 
-the paper's upward trend. This reflects our simplified model (paper uses Algorithm 1's 
-dynamic allocation, we use a fixed 1/M split). A perfect reproduction would implement 
-Algorithm 1's full bandwidth optimization.
+This brings reported compute energy into the **0.3–2 J** range per slot
+(E_fly dominates at ~4–100 J for a moving UAV), so total per-slot energy is
+**5–100 J** depending on speed — comparable to the paper's Figs. 4a/5a
+scale of 5–28 J. The episode reward now starts at roughly **−150 to −250**
+and converges to **−20 to −30** for PPO-MEC-SC, matching Fig. 3's scale.
 
 
 ### Latest fix: Reduced state dimensionality
